@@ -1,36 +1,28 @@
-FROM alpine:3.9
+FROM debian:stretch
 
-# Build parameters --build-arg
-ARG USER=laravel
-ARG DIR=/home/laravel
+RUN apt-get update && apt-get install wget apt-transport-https lsb-release ca-certificates unzip -y
 
-# Install base tools
-RUN apk update
-RUN apk add --no-cache bash php7 php7-curl php7-common php7-cli php7-mysqli php7-mbstring php7-fpm php7-xml php7-zip nodejs npm nginx
+RUN wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
+RUN echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
 
-# Install global PM2
-#RUN npm install -g pm2@latest \
-#    && pm2 install pm2-logrotate \
-#    && pm2 set pm2-logrotate:retain 7
+RUN apt-get update && apt-get install php7.2 php7.2-curl php7.2-common php7.2-cli php7.2-mysql php7.2-mbstring php7.2-fpm php7.2-xml php7.2-zip composer nginx -y
 
-# USER dirs and Permissions
-RUN addgroup -S laravel && adduser -S laravel -G laravel
+RUN echo "cgi.fix_pathinfo=0" >> /etc/php/7.2/fpm/php.ini
 
-#RUN mkdir $LOGDIR
 
-WORKDIR $DIR
-#USER $USER
 
-#COPY . .
-# Install node-modules
-#RUN npm install
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Hack for permissions
-#USER root
-#RUN chown -R $USER:$USER $DIR
-#RUN chown -R $USER:$USER $LOGDIR
-#USER $USER
+RUN mkdir -p /var/www
+WORKDIR /var/www
+RUN composer create-project laravel/laravel laravel
 
-EXPOSE 8000
+RUN chown -R www-data:root /var/www/laravel
+RUN chmod 755 /var/www/laravel/storage
+
+# COPY . .
+
+EXPOSE 80 443
 
 CMD bash -C 'start.sh'; 'bash'
+
